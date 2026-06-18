@@ -1,7 +1,7 @@
 // Content Script: YouTube 페이지에서 오버레이 주입 및 댓글 표시
 
 const FADE_DURATION   = 5000;  // 페이드 모드 노출 시간 (ms)
-const FADE_INTERVAL   = 6500;  // 페이드 모드 댓글 간격 (ms)
+const FADE_INTERVAL   = 8000;  // 페이드 모드 댓글 간격 (ms) — DURATION + 3초 여백
 const SCROLL_DURATION = 18000; // 스크롤 모드 이동 시간 (ms) — 기존 9s의 2배
 const SCROLL_INTERVAL = 4000;  // 스크롤 모드 댓글 간격 (ms)
 const SCROLL_LANES    = 5;     // 스크롤 모드 레인 수
@@ -167,9 +167,6 @@ function scheduleScroll(comments) {
 
 function showFadeChip(comment) {
   if (!overlay) return;
-
-  // 이전 칩 즉시 제거 (겹침 방지)
-  overlay.querySelectorAll('.yco-chip').forEach(el => el.remove());
 
   const chip = makeChip(comment);
   chip.classList.add('mode-fade', `pos-${position}`);
