@@ -1,0 +1,37 @@
+{
+  "manifest_version": 3,
+  "name": "YouTube Comment Overlay",
+  "version": "0.1.0",
+  "description": "유튜브 영상 위에 인기 댓글을 흐르는 자막으로 표시합니다.",
+
+  "permissions": ["storage", "activeTab"],
+
+  "host_permissions": [
+    "https://www.youtube.com/*",
+    "https://www.googleapis.com/youtube/v3/*"
+  ],
+
+  "background": {
+    "service_worker": "background.js"
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["https://www.youtube.com/*"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "YouTube Comment Overlay"
+  },
+
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
