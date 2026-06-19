@@ -61,7 +61,7 @@ function observeUrlChange() {
       lastUrl = location.href;
       onNavigate();
     }
-  }).observe(document.body, { childList: true, subtree: false });
+  }).observe(document.body, { childList: true, subtree: true });
 }
 
 function onNavigate() {
