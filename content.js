@@ -10,7 +10,6 @@ const LANE_STEP       = 8;     // 레인 간격 (% 단위)
 let overlay        = null;
 let currentVideoId = null;
 let enabled        = true;
-let apiKey         = '';
 let mode           = 'fade';   // 'fade' | 'scroll'
 let position       = 'bottom'; // 8점 위치
 let bgOpacity      = 55;       // 배경 투명도 0~100
@@ -21,9 +20,8 @@ let lastComments   = null;
 // ── 초기화 ──────────────────────────────────────────────────────────────────
 
 chrome.storage.sync.get(
-  { apiKey: '', enabled: true, mode: 'scroll', position: 'bottom', bgOpacity: 50 },
+  { enabled: true, mode: 'scroll', position: 'bottom', bgOpacity: 50 },
   result => {
-    apiKey    = result.apiKey;
     enabled   = result.enabled;
     mode      = result.mode;
     position  = result.position;
@@ -33,7 +31,6 @@ chrome.storage.sync.get(
 );
 
 chrome.storage.onChanged.addListener(changes => {
-  if ('apiKey'    in changes) apiKey    = changes.apiKey.newValue    ?? '';
   if ('mode'      in changes) {
     mode = changes.mode.newValue ?? 'fade';
     if (lastComments && overlay) {
@@ -133,7 +130,6 @@ async function loadAndSchedule(videoId) {
     result = await chrome.runtime.sendMessage({
       type: 'FETCH_COMMENTS',
       videoId,
-      apiKey,
     });
   } catch {
     return;

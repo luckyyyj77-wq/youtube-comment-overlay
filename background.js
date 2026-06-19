@@ -1,7 +1,6 @@
-// Service Worker: YouTube API 호출 및 캐싱 담당
+// Service Worker: 백엔드 서버를 통해 댓글 조회 (서버 캐시 공유)
 
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5분
-const cache = new Map(); // videoId → { data, fetchedAt }
+const SERVER_URL = 'https://youtube-comment-overlay-server-production.up.railway.app';
 
 const DEMO_COMMENTS = [
   { id: 'd1', text: '이 영상 진짜 최고다 ㅋㅋㅋㅋ', likeCount: 18400, replyCount: 312, authorName: '유저A' },
@@ -29,7 +28,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.type === 'FETCH_COMMENTS') {
-    handleFetchComments(msg.videoId, msg.apiKey)
+    handleFetchComments(msg.videoId)
       .then(sendResponse)
       .catch(err => sendResponse({ error: err.message }));
     return true;
@@ -47,51 +46,24 @@ function updateIcon(enabled) {
   }
 }
 
-async function handleFetchComments(videoId, apiKey) {
-  if (!apiKey) {
+async function handleFetchComments(videoId) {
+  try {
+    const res = await fetch(`${SERVER_URL}/api/comments?videoId=${videoId}`, {
+      signal: AbortSignal.timeout(10000),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      if (data.demo) return { comments: tagComments(DEMO_COMMENTS), demo: true };
+      throw new Error(data.error ?? `HTTP ${res.status}`);
+    }
+
+    // 서버가 tagComments 없이 보내므로 클라이언트에서 태깅
+    return { comments: tagComments(data.comments), fromCache: data.fromCache };
+  } catch {
+    // 서버 연결 실패 시 데모 모드로 폴백
     return { comments: tagComments(DEMO_COMMENTS), demo: true };
   }
-
-  const cached = cache.get(videoId);
-  if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
-    return { comments: cached.data, fromCache: true };
-  }
-
-  const comments = await fetchTopComments(videoId, apiKey);
-  cache.set(videoId, { data: comments, fetchedAt: Date.now() });
-  return { comments, fromCache: false };
-}
-
-async function fetchTopComments(videoId, apiKey) {
-  const url = new URL('https://www.googleapis.com/youtube/v3/commentThreads');
-  url.searchParams.set('part', 'snippet');
-  url.searchParams.set('videoId', videoId);
-  url.searchParams.set('order', 'relevance');
-  url.searchParams.set('maxResults', '100');
-  url.searchParams.set('key', apiKey);
-
-  const res = await fetch(url.toString());
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    const reason = body?.error?.message ?? `HTTP ${res.status}`;
-    throw new Error(reason);
-  }
-
-  const data = await res.json();
-  const items = data.items ?? [];
-
-  const comments = items.map(item => {
-    const s = item.snippet.topLevelComment.snippet;
-    return {
-      id: item.id,
-      text: s.textDisplay,
-      likeCount: s.likeCount ?? 0,
-      replyCount: item.snippet.totalReplyCount ?? 0,
-      authorName: s.authorDisplayName,
-    };
-  });
-
-  return tagComments(comments);
 }
 
 function tagComments(comments) {

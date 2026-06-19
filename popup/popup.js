@@ -1,5 +1,3 @@
-// ── i18n 텍스트 ─────────────────────────────────────────────────────────────
-
 const I18N = {
   ko: {
     displayMode:  '표시 방식',
@@ -21,8 +19,6 @@ const I18N = {
   },
 };
 
-// ── DOM 참조 ─────────────────────────────────────────────────────────────────
-
 const chkEnabled   = document.getElementById('chk-enabled');
 const modeRadios   = document.querySelectorAll('input[name="mode"]');
 const posBtns      = document.querySelectorAll('.pos-btn');
@@ -34,8 +30,6 @@ const DEFAULTS = { enabled: true, mode: 'scroll', position: 'bottom', bgOpacity:
 
 let currentLang = 'en';
 
-// ── 초기화 ───────────────────────────────────────────────────────────────────
-
 chrome.storage.sync.get(DEFAULTS, result => {
   chkEnabled.checked = result.enabled;
   setMode(result.mode);
@@ -43,8 +37,6 @@ chrome.storage.sync.get(DEFAULTS, result => {
   setOpacity(result.bgOpacity);
   applyLang(result.lang);
 });
-
-// ── 이벤트 ───────────────────────────────────────────────────────────────────
 
 chkEnabled.addEventListener('change', () => {
   chrome.storage.sync.set({ enabled: chkEnabled.checked });
@@ -73,8 +65,6 @@ btnLang.addEventListener('click', () => {
   applyLang(next);
 });
 
-// ── 헬퍼 ─────────────────────────────────────────────────────────────────────
-
 function applyLang(lang) {
   currentLang = lang;
   const t = I18N[lang];
@@ -100,4 +90,3 @@ function setOpacity(val) {
   rangeOpacity.value       = val;
   opacityValue.textContent = `${val}%`;
 }
-
