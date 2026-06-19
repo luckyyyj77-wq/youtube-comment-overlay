@@ -16,6 +16,7 @@ let position       = 'bottom'; // 8점 위치
 let bgOpacity      = 55;       // 배경 투명도 0~100
 let laneOccupiedUntil = new Array(SCROLL_LANES).fill(0);
 let lastComments   = null;     // 모드 전환 시 재사용
+let scheduleToken  = 0;        // 루프 종료용 토큰 — 값이 바뀌면 이전 루프 자동 종료
 
 // ── 초기화 ──────────────────────────────────────────────────────────────────
 
@@ -36,12 +37,7 @@ chrome.storage.onChanged.addListener(changes => {
   if ('mode'      in changes) {
     mode = changes.mode.newValue ?? 'fade';
     if (lastComments && overlay) {
-      // 기존 루프를 videoId 체크로 종료시키고 새 모드로 재시작
-      const savedId = currentVideoId;
-      currentVideoId = null;
       clearOverlayChips();
-      currentVideoId = savedId;
-      laneOccupiedUntil = new Array(SCROLL_LANES).fill(0);
       scheduleChips(lastComments);
     }
   }
@@ -122,6 +118,7 @@ function attachOverlay(container) {
 }
 
 function removeOverlay() {
+  scheduleToken++;
   overlay?.remove();
   overlay = null;
   lastComments = null;
@@ -171,10 +168,12 @@ function showDemoBadge() {
 }
 
 function scheduleChips(comments) {
+  scheduleToken++;  // 이전 루프 무효화
+  laneOccupiedUntil = new Array(SCROLL_LANES).fill(0);
   if (mode === 'scroll') {
-    scheduleScroll(comments);
+    scheduleScroll(comments, scheduleToken);
   } else {
-    scheduleFade(comments);
+    scheduleFade(comments, scheduleToken);
   }
 }
 
@@ -193,12 +192,11 @@ function buildDeck(comments) {
 }
 
 // 페이드 모드: 한 번에 하나씩, 덱 소진 시 재빌드
-function scheduleFade(comments) {
-  const videoId = currentVideoId;
+function scheduleFade(comments, token) {
   let deck = buildDeck(comments);
   let pos  = 0;
   const display = () => {
-    if (!overlay || !enabled || currentVideoId !== videoId) return;
+    if (!overlay || !enabled || scheduleToken !== token) return;
     if (pos >= deck.length) { deck = buildDeck(comments); pos = 0; }
     showFadeChip(deck[pos++]);
     setTimeout(display, FADE_INTERVAL);
@@ -207,13 +205,11 @@ function scheduleFade(comments) {
 }
 
 // 스크롤 모드: 레인별로 간격을 두고 흘려보냄, 덱 소진 시 재빌드
-function scheduleScroll(comments) {
-  laneOccupiedUntil = new Array(SCROLL_LANES).fill(0);
-  const videoId = currentVideoId;
+function scheduleScroll(comments, token) {
   let deck = buildDeck(comments);
   let pos  = 0;
   const display = () => {
-    if (!overlay || !enabled || currentVideoId !== videoId) return;
+    if (!overlay || !enabled || scheduleToken !== token) return;
     if (pos >= deck.length) { deck = buildDeck(comments); pos = 0; }
     showScrollChip(deck[pos++]);
     setTimeout(display, SCROLL_INTERVAL);
