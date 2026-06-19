@@ -21,7 +21,7 @@ let lastComments   = null;
 // ── 초기화 ──────────────────────────────────────────────────────────────────
 
 chrome.storage.sync.get(
-  { apiKey: '', enabled: true, mode: 'fade', position: 'bottom', bgOpacity: 55 },
+  { apiKey: '', enabled: true, mode: 'scroll', position: 'bottom', bgOpacity: 50 },
   result => {
     apiKey    = result.apiKey;
     enabled   = result.enabled;
