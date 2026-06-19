@@ -102,3 +102,14 @@
   white-space: nowrap;
   pointer-events: none;
 }
+
+.yco-demo-badge.yco-no-comments {
+  background: rgba(80, 80, 80, 0.85);
+  color: #fff;
+  top: 50%;
+  right: auto;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 13px;
+  padding: 6px 16px;
+}

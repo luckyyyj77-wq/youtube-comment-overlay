@@ -123,11 +123,24 @@ async function loadAndSchedule(videoId) {
     apiKey,
   });
 
-  if (result.error || !result.comments?.length) return;
   if (videoId !== currentVideoId) return;
+
+  if (result.error || !result.comments?.length) {
+    showNoCommentsBadge();
+    return;
+  }
 
   if (result.demo) showDemoBadge();
   scheduleChips(result.comments);
+}
+
+function showNoCommentsBadge() {
+  if (!overlay) return;
+  const badge = document.createElement('div');
+  badge.className = 'yco-demo-badge yco-no-comments';
+  badge.textContent = '댓글을 사용할 수 없는 영상입니다';
+  overlay.appendChild(badge);
+  setTimeout(() => badge.remove(), 4000);
 }
 
 function showDemoBadge() {
