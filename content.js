@@ -155,7 +155,7 @@ function showNoCommentsBadge() {
   if (!overlay) return;
   const badge = document.createElement('div');
   badge.className = 'yco-demo-badge yco-no-comments';
-  badge.textContent = '댓글을 사용할 수 없는 영상입니다';
+  badge.textContent = 'Comments are disabled for this video';
   overlay.appendChild(badge);
   setTimeout(() => badge.remove(), 4000);
 }
@@ -164,7 +164,7 @@ function showDemoBadge() {
   if (!overlay || overlay.querySelector('.yco-demo-badge')) return;
   const badge = document.createElement('div');
   badge.className = 'yco-demo-badge';
-  badge.textContent = '데모 모드';
+  badge.textContent = 'Demo Mode';
   overlay.appendChild(badge);
 }
 

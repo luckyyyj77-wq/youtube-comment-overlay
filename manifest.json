@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "YouTube Comment Overlay",
-  "version": "0.1.0",
-  "description": "유튜브 영상 위에 인기 댓글을 흐르는 자막으로 표시합니다.",
+  "version": "1.0.0",
+  "description": "Displays popular YouTube comments as an overlay on the video — scroll or fade mode, color-coded by likes.",
 
   "permissions": ["storage", "activeTab"],
 

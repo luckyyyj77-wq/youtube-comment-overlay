@@ -30,9 +30,9 @@ const rangeOpacity = document.getElementById('range-opacity');
 const opacityValue = document.getElementById('opacity-value');
 const btnLang      = document.getElementById('btn-lang');
 
-const DEFAULTS = { enabled: true, mode: 'scroll', position: 'bottom', bgOpacity: 50, lang: 'ko' };
+const DEFAULTS = { enabled: true, mode: 'scroll', position: 'bottom', bgOpacity: 50, lang: 'en' };
 
-let currentLang = 'ko';
+let currentLang = 'en';
 
 // ── 초기화 ───────────────────────────────────────────────────────────────────
 
@@ -84,7 +84,7 @@ function applyLang(lang) {
     if (t[key] !== undefined) el.textContent = t[key];
   });
 
-  btnLang.textContent = lang === 'ko' ? 'EN' : '한';
+  btnLang.textContent = lang === 'en' ? '한' : 'EN';
   document.documentElement.lang = lang;
 }
 
