@@ -128,11 +128,16 @@ function removeOverlay() {
 // ── 댓글 로드 및 스케줄링 ────────────────────────────────────────────────────
 
 async function loadAndSchedule(videoId) {
-  const result = await chrome.runtime.sendMessage({
-    type: 'FETCH_COMMENTS',
-    videoId,
-    apiKey,
-  });
+  let result;
+  try {
+    result = await chrome.runtime.sendMessage({
+      type: 'FETCH_COMMENTS',
+      videoId,
+      apiKey,
+    });
+  } catch {
+    return;
+  }
 
   if (videoId !== currentVideoId) return;
 
