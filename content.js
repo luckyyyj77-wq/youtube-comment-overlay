@@ -15,8 +15,8 @@ let mode           = 'fade';   // 'fade' | 'scroll'
 let position       = 'bottom'; // 8점 위치
 let bgOpacity      = 55;       // 배경 투명도 0~100
 let laneOccupiedUntil = new Array(SCROLL_LANES).fill(0);
-let lastComments   = null;     // 모드 전환 시 재사용
-let scheduleToken  = 0;        // 루프 종료용 토큰 — 값이 바뀌면 이전 루프 자동 종료
+let scheduleId     = 0;
+let lastComments   = null;
 
 // ── 초기화 ──────────────────────────────────────────────────────────────────
 
@@ -37,7 +37,8 @@ chrome.storage.onChanged.addListener(changes => {
   if ('mode'      in changes) {
     mode = changes.mode.newValue ?? 'fade';
     if (lastComments && overlay) {
-      clearOverlayChips();
+      overlay.querySelectorAll('.yco-chip').forEach(c => c.remove());
+      laneOccupiedUntil = new Array(SCROLL_LANES).fill(0);
       scheduleChips(lastComments);
     }
   }
@@ -118,15 +119,10 @@ function attachOverlay(container) {
 }
 
 function removeOverlay() {
-  scheduleToken++;
+  scheduleId++;
   overlay?.remove();
   overlay = null;
   lastComments = null;
-}
-
-function clearOverlayChips() {
-  if (!overlay) return;
-  overlay.querySelectorAll('.yco-chip').forEach(c => c.remove());
 }
 
 // ── 댓글 로드 및 스케줄링 ────────────────────────────────────────────────────
@@ -168,12 +164,12 @@ function showDemoBadge() {
 }
 
 function scheduleChips(comments) {
-  scheduleToken++;  // 이전 루프 무효화
-  laneOccupiedUntil = new Array(SCROLL_LANES).fill(0);
+  scheduleId++;
+  const myId = scheduleId;
   if (mode === 'scroll') {
-    scheduleScroll(comments, scheduleToken);
+    scheduleScroll(comments, myId);
   } else {
-    scheduleFade(comments, scheduleToken);
+    scheduleFade(comments, myId);
   }
 }
 
@@ -192,11 +188,11 @@ function buildDeck(comments) {
 }
 
 // 페이드 모드: 한 번에 하나씩, 덱 소진 시 재빌드
-function scheduleFade(comments, token) {
+function scheduleFade(comments, myId) {
   let deck = buildDeck(comments);
   let pos  = 0;
   const display = () => {
-    if (!overlay || !enabled || scheduleToken !== token) return;
+    if (!overlay || !enabled || scheduleId !== myId) return;
     if (pos >= deck.length) { deck = buildDeck(comments); pos = 0; }
     showFadeChip(deck[pos++]);
     setTimeout(display, FADE_INTERVAL);
@@ -205,11 +201,11 @@ function scheduleFade(comments, token) {
 }
 
 // 스크롤 모드: 레인별로 간격을 두고 흘려보냄, 덱 소진 시 재빌드
-function scheduleScroll(comments, token) {
+function scheduleScroll(comments, myId) {
   let deck = buildDeck(comments);
   let pos  = 0;
   const display = () => {
-    if (!overlay || !enabled || scheduleToken !== token) return;
+    if (!overlay || !enabled || scheduleId !== myId) return;
     if (pos >= deck.length) { deck = buildDeck(comments); pos = 0; }
     showScrollChip(deck[pos++]);
     setTimeout(display, SCROLL_INTERVAL);
