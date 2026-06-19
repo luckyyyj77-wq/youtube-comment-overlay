@@ -227,3 +227,18 @@ body {
   font-size: 11px;
   line-height: 1.6;
 }
+
+.footer {
+  margin-top: 12px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.footer-link {
+  font-size: 10px;
+  color: #888;
+  text-decoration: none;
+  letter-spacing: 0.3px;
+  transition: color 0.15s;
+}
+.footer-link:hover { color: #ff0000; }

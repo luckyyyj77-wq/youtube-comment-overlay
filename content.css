@@ -31,9 +31,11 @@
   max-width: none;
 }
 
-.yco-chip[data-tag="likes"]   { color: #FFD700; }
-.yco-chip[data-tag="replies"] { color: #7DF9FF; }
-.yco-chip[data-tag="random"]  { color: #fff; }
+.yco-chip[data-tag="top10"]   { color: #FF4500; } /* 🔥 상위 10%  — 주홍 */
+.yco-chip[data-tag="top25"]   { color: #FFD700; } /* 👍 상위 25%  — 금색 */
+.yco-chip[data-tag="popular"] { color: #00CFFF; } /* 💙 상위 50%  — 하늘 */
+.yco-chip[data-tag="replies"] { color: #7DF9FF; } /* 💬 대댓글 1위 — 민트 */
+.yco-chip[data-tag="random"]  { color: #fff; }    /*    나머지     — 흰색 */
 
 /* ── 페이드 모드 ── */
 .yco-chip.mode-fade {

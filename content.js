@@ -2,10 +2,10 @@
 
 const FADE_DURATION   = 5000;  // 페이드 모드 노출 시간 (ms)
 const FADE_INTERVAL   = 8000;  // 페이드 모드 댓글 간격 (ms) — DURATION + 3초 여백
-const SCROLL_DURATION = 18000; // 스크롤 모드 이동 시간 (ms) — 기존 9s의 2배
+const SCROLL_SPEED_PX = 96;    // 스크롤 속도 (px/s) — 고정 속도로 겹침 방지
 const SCROLL_INTERVAL = 4000;  // 스크롤 모드 댓글 간격 (ms)
-const SCROLL_LANES    = 5;     // 스크롤 모드 레인 수
-const LANE_STEP       = 16;    // 레인 간격 (% 단위)
+const SCROLL_LANES    = 10;    // 스크롤 모드 레인 수
+const LANE_STEP       = 8;     // 레인 간격 (% 단위)
 
 let overlay        = null;
 let currentVideoId = null;
@@ -37,7 +37,12 @@ chrome.storage.onChanged.addListener(changes => {
   if ('bgOpacity' in changes) bgOpacity = changes.bgOpacity.newValue ?? 55;
   if ('enabled'   in changes) {
     enabled = changes.enabled.newValue ?? true;
-    if (!enabled) removeOverlay();
+    if (!enabled) {
+      removeOverlay();
+      currentVideoId = null;
+    } else {
+      tryAttach();
+    }
   }
 });
 
@@ -50,12 +55,13 @@ function init() {
 
 function observeUrlChange() {
   let lastUrl = location.href;
+  // attributes만 감시해서 DOM 변경 폭탄 차단 — YouTube는 SPA 이동 시 <body>의 attributes가 바뀜
   new MutationObserver(() => {
     if (location.href !== lastUrl) {
       lastUrl = location.href;
       onNavigate();
     }
-  }).observe(document.body, { childList: true, subtree: true });
+  }).observe(document.body, { childList: true, subtree: false });
 }
 
 function onNavigate() {
@@ -140,27 +146,47 @@ function scheduleChips(comments) {
   }
 }
 
-// 페이드 모드: 한 번에 하나씩, 순차 표시
-function scheduleFade(comments) {
-  const videoId = currentVideoId;
-  const display = (idx) => {
-    if (!overlay || !enabled || currentVideoId !== videoId) return;
-    showFadeChip(comments[idx % comments.length]);
-    setTimeout(() => display(idx + 1), FADE_INTERVAL);
-  };
-  setTimeout(() => display(0), 1500);
+// top10/top25/popular/replies 는 하이라이트 풀, random은 일반 풀
+function buildDeck(comments) {
+  const popularPool = shuffled(comments.filter(c => c.tag !== 'random'));
+  const randomPool  = shuffled(comments.filter(c => c.tag === 'random'));
+
+  const deck = [];
+  const half = Math.max(popularPool.length, randomPool.length);
+  for (let i = 0; i < half; i++) {
+    if (i < popularPool.length) deck.push(popularPool[i]);
+    if (i < randomPool.length)  deck.push(randomPool[i]);
+  }
+  return deck;
 }
 
-// 스크롤 모드: 레인별로 간격을 두고 흘려보냄
+// 페이드 모드: 한 번에 하나씩, 덱 소진 시 재빌드
+function scheduleFade(comments) {
+  const videoId = currentVideoId;
+  let deck = buildDeck(comments);
+  let pos  = 0;
+  const display = () => {
+    if (!overlay || !enabled || currentVideoId !== videoId) return;
+    if (pos >= deck.length) { deck = buildDeck(comments); pos = 0; }
+    showFadeChip(deck[pos++]);
+    setTimeout(display, FADE_INTERVAL);
+  };
+  setTimeout(display, 1500);
+}
+
+// 스크롤 모드: 레인별로 간격을 두고 흘려보냄, 덱 소진 시 재빌드
 function scheduleScroll(comments) {
   laneOccupiedUntil = new Array(SCROLL_LANES).fill(0);
   const videoId = currentVideoId;
-  const display = (idx) => {
+  let deck = buildDeck(comments);
+  let pos  = 0;
+  const display = () => {
     if (!overlay || !enabled || currentVideoId !== videoId) return;
-    showScrollChip(comments[idx % comments.length]);
-    setTimeout(() => display(idx + 1), SCROLL_INTERVAL);
+    if (pos >= deck.length) { deck = buildDeck(comments); pos = 0; }
+    showScrollChip(deck[pos++]);
+    setTimeout(display, SCROLL_INTERVAL);
   };
-  setTimeout(() => display(0), 1500);
+  setTimeout(display, 1500);
 }
 
 // ── 칩 생성 ─────────────────────────────────────────────────────────────────
@@ -184,12 +210,26 @@ function showScrollChip(comment) {
 
   const chip = makeChip(comment);
   chip.classList.add('mode-scroll');
-  chip.style.setProperty('--dur', `${SCROLL_DURATION / 1000}s`);
   chip.style.top  = `${topPct}%`;
   chip.style.left = '100%';
 
+  // 너비 실측을 위해 잠깐 비가시 상태로 DOM에 삽입
+  chip.style.visibility = 'hidden';
   overlay.appendChild(chip);
-  laneOccupiedUntil[lane] = Date.now() + SCROLL_DURATION * 0.15;
+
+  const chipW   = chip.offsetWidth;
+  const screenW = overlay.offsetWidth || window.innerWidth;
+  // 총 이동 거리 = 화면 너비 + 칩 너비, 고정 속도로 소요 시간 계산
+  const totalPx  = screenW + chipW;
+  const durMs    = (totalPx / SCROLL_SPEED_PX) * 1000;
+  // 앞 칩의 오른쪽 끝이 화면 안으로 완전히 들어올 때까지 레인 점유
+  // = 칩 너비만큼 이동하는 데 걸리는 시간 + 안전 여백 500ms
+  const occupyMs = (chipW / SCROLL_SPEED_PX) * 1000 + 500;
+
+  chip.style.setProperty('--dur', `${durMs / 1000}s`);
+  chip.style.visibility = '';
+
+  laneOccupiedUntil[lane] = Date.now() + occupyMs;
   chip.addEventListener('animationend', () => chip.remove(), { once: true });
 }
 
@@ -205,7 +245,9 @@ function makeChip(comment) {
 
 function buildLabel(comment) {
   const text = stripHtml(comment.text).slice(0, 100);
-  if (comment.tag === 'likes')   return `👍 ${comment.likeCount.toLocaleString()}  ${text}`;
+  if (comment.tag === 'top10')   return `🔥 ${comment.likeCount.toLocaleString()}  ${text}`;
+  if (comment.tag === 'top25')   return `👍 ${comment.likeCount.toLocaleString()}  ${text}`;
+  if (comment.tag === 'popular') return `💙 ${comment.likeCount.toLocaleString()}  ${text}`;
   if (comment.tag === 'replies') return `💬 ${comment.replyCount}  ${text}`;
   return text;
 }
@@ -229,6 +271,15 @@ function isWatchPage() {
 function extractVideoId(href) {
   try { return new URL(href).searchParams.get('v'); }
   catch { return null; }
+}
+
+function shuffled(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
 }
 
 function stripHtml(html) {

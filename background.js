@@ -18,18 +18,68 @@ const DEMO_COMMENTS = [
   { id: 'd12', text: '이 채널 숨겨진 보물이네', likeCount: 1200, replyCount: 11, authorName: '유저L' },
 ];
 
+// 시작 시 저장된 enabled 상태로 아이콘 초기화
+chrome.storage.sync.get({ enabled: true }, r => updateIcon(r.enabled));
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'sync' && 'enabled' in changes) {
+    updateIcon(changes.enabled.newValue ?? true);
+  }
+});
+
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.type === 'FETCH_COMMENTS') {
     handleFetchComments(msg.videoId, msg.apiKey)
       .then(sendResponse)
       .catch(err => sendResponse({ error: err.message }));
-    return true; // 비동기 응답을 위해 true 반환
+    return true;
   }
 });
 
+function updateIcon(enabled) {
+  const size = 128;
+  const canvas = new OffscreenCanvas(size, size);
+  const ctx = canvas.getContext('2d');
+
+  // 후광 (glow)
+  const glowColor = enabled ? 'rgba(0, 230, 100, 0.55)' : 'rgba(180, 0, 0, 0.45)';
+  const glowRadius = enabled ? 28 : 20;
+  const gradient = ctx.createRadialGradient(size/2, size/2, size/2 - glowRadius, size/2, size/2, size/2);
+  gradient.addColorStop(0, glowColor);
+  gradient.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, size, size);
+
+  // 원본 아이콘 이미지 로드 후 합성
+  fetch(chrome.runtime.getURL('icons/icon128.png'))
+    .then(r => r.blob())
+    .then(blob => createImageBitmap(blob))
+    .then(bitmap => {
+      const pad = enabled ? 12 : 18;
+      ctx.globalAlpha = enabled ? 1.0 : 0.45;
+      ctx.drawImage(bitmap, pad, pad, size - pad * 2, size - pad * 2);
+      ctx.globalAlpha = 1.0;
+
+      // 꺼짐일 때 흑백 처리
+      if (!enabled) {
+        const imgData = ctx.getImageData(0, 0, size, size);
+        const d = imgData.data;
+        for (let i = 0; i < d.length; i += 4) {
+          const gray = d[i] * 0.299 + d[i+1] * 0.587 + d[i+2] * 0.114;
+          d[i] = d[i+1] = d[i+2] = gray;
+        }
+        ctx.putImageData(imgData, 0, 0);
+      }
+
+      const imageData = ctx.getImageData(0, 0, size, size);
+      chrome.action.setIcon({ imageData: { 128: imageData } });
+    })
+    .catch(() => {});
+}
+
 async function handleFetchComments(videoId, apiKey) {
   if (!apiKey) {
-    return { comments: selectComments(DEMO_COMMENTS), demo: true };
+    return { comments: tagComments(DEMO_COMMENTS), demo: true };
   }
 
   const cached = cache.get(videoId);
@@ -43,7 +93,6 @@ async function handleFetchComments(videoId, apiKey) {
 }
 
 async function fetchTopComments(videoId, apiKey) {
-  // 1차: relevance 순으로 최대 100개 가져오기
   const url = new URL('https://www.googleapis.com/youtube/v3/commentThreads');
   url.searchParams.set('part', 'snippet');
   url.searchParams.set('videoId', videoId);
@@ -72,27 +121,34 @@ async function fetchTopComments(videoId, apiKey) {
     };
   });
 
-  return selectComments(comments);
+  return tagComments(comments);
 }
 
-function selectComments(comments) {
+function tagComments(comments) {
   if (comments.length === 0) return [];
 
+  const n = comments.length;
   const byLikes = [...comments].sort((a, b) => b.likeCount - a.likeCount);
-  const topLike = byLikes[0];
 
-  const byReplies = [...comments].sort((a, b) => b.replyCount - a.replyCount);
-  const topReply = byReplies.find(c => c.id !== topLike.id) ?? byReplies[0];
+  // 좋아요 순위 기반 3단계 구간 계산
+  const top10Count  = Math.max(1, Math.ceil(n * 0.10));
+  const top25Count  = Math.max(1, Math.ceil(n * 0.25));
+  const top50Count  = Math.max(1, Math.ceil(n * 0.50));
 
-  const usedIds = new Set([topLike.id, topReply.id]);
-  const pool = comments.filter(c => !usedIds.has(c.id));
-  const randoms = shuffled(pool).slice(0, 8);
+  const top10Ids  = new Set(byLikes.slice(0,          top10Count).map(c => c.id));
+  const top25Ids  = new Set(byLikes.slice(top10Count, top25Count).map(c => c.id));
+  const top50Ids  = new Set(byLikes.slice(top25Count, top50Count).map(c => c.id));
 
-  return [
-    { ...topLike, tag: 'likes' },
-    { ...topReply, tag: 'replies' },
-    ...randoms.map(c => ({ ...c, tag: 'random' })),
-  ];
+  // 대댓글 1위 → 'replies' 태그 (좋아요 태그보다 우선)
+  const topReplyId = comments.reduce((best, c) => c.replyCount > best.replyCount ? c : best).id;
+
+  return comments.map(c => {
+    if (c.id === topReplyId)  return { ...c, tag: 'replies' };
+    if (top10Ids.has(c.id))   return { ...c, tag: 'top10' };
+    if (top25Ids.has(c.id))   return { ...c, tag: 'top25' };
+    if (top50Ids.has(c.id))   return { ...c, tag: 'popular' };
+    return { ...c, tag: 'random' };
+  });
 }
 
 function shuffled(arr) {
