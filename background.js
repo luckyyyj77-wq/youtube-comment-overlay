@@ -37,44 +37,14 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 });
 
 function updateIcon(enabled) {
-  const size = 128;
-  const canvas = new OffscreenCanvas(size, size);
-  const ctx = canvas.getContext('2d');
-
-  // 후광 (glow)
-  const glowColor = enabled ? 'rgba(0, 230, 100, 0.55)' : 'rgba(180, 0, 0, 0.45)';
-  const glowRadius = enabled ? 28 : 20;
-  const gradient = ctx.createRadialGradient(size/2, size/2, size/2 - glowRadius, size/2, size/2, size/2);
-  gradient.addColorStop(0, glowColor);
-  gradient.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, size, size);
-
-  // 원본 아이콘 이미지 로드 후 합성
-  fetch(chrome.runtime.getURL('icons/icon128.png'))
-    .then(r => r.blob())
-    .then(blob => createImageBitmap(blob))
-    .then(bitmap => {
-      const pad = enabled ? 12 : 18;
-      ctx.globalAlpha = enabled ? 1.0 : 0.45;
-      ctx.drawImage(bitmap, pad, pad, size - pad * 2, size - pad * 2);
-      ctx.globalAlpha = 1.0;
-
-      // 꺼짐일 때 흑백 처리
-      if (!enabled) {
-        const imgData = ctx.getImageData(0, 0, size, size);
-        const d = imgData.data;
-        for (let i = 0; i < d.length; i += 4) {
-          const gray = d[i] * 0.299 + d[i+1] * 0.587 + d[i+2] * 0.114;
-          d[i] = d[i+1] = d[i+2] = gray;
-        }
-        ctx.putImageData(imgData, 0, 0);
-      }
-
-      const imageData = ctx.getImageData(0, 0, size, size);
-      chrome.action.setIcon({ imageData: { 128: imageData } });
-    })
-    .catch(() => {});
+  // 뱃지로 상태 표시 — OffscreenCanvas ImageData는 SW에서 setIcon 전달이 불안정
+  if (enabled) {
+    chrome.action.setBadgeText({ text: '' });
+  } else {
+    chrome.action.setBadgeText({ text: 'OFF' });
+    chrome.action.setBadgeBackgroundColor({ color: '#CC0000' });
+    chrome.action.setBadgeTextColor({ color: '#FFFFFF' });
+  }
 }
 
 async function handleFetchComments(videoId, apiKey) {
