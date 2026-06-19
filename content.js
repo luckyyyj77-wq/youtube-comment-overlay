@@ -15,6 +15,7 @@ let mode           = 'fade';   // 'fade' | 'scroll'
 let position       = 'bottom'; // 8점 위치
 let bgOpacity      = 55;       // 배경 투명도 0~100
 let laneOccupiedUntil = new Array(SCROLL_LANES).fill(0);
+let lastComments   = null;     // 모드 전환 시 재사용
 
 // ── 초기화 ──────────────────────────────────────────────────────────────────
 
@@ -32,7 +33,18 @@ chrome.storage.sync.get(
 
 chrome.storage.onChanged.addListener(changes => {
   if ('apiKey'    in changes) apiKey    = changes.apiKey.newValue    ?? '';
-  if ('mode'      in changes) mode      = changes.mode.newValue      ?? 'fade';
+  if ('mode'      in changes) {
+    mode = changes.mode.newValue ?? 'fade';
+    if (lastComments && overlay) {
+      // 기존 루프를 videoId 체크로 종료시키고 새 모드로 재시작
+      const savedId = currentVideoId;
+      currentVideoId = null;
+      clearOverlayChips();
+      currentVideoId = savedId;
+      laneOccupiedUntil = new Array(SCROLL_LANES).fill(0);
+      scheduleChips(lastComments);
+    }
+  }
   if ('position'  in changes) position  = changes.position.newValue  ?? 'bottom';
   if ('bgOpacity' in changes) bgOpacity = changes.bgOpacity.newValue ?? 55;
   if ('enabled'   in changes) {
@@ -112,6 +124,12 @@ function attachOverlay(container) {
 function removeOverlay() {
   overlay?.remove();
   overlay = null;
+  lastComments = null;
+}
+
+function clearOverlayChips() {
+  if (!overlay) return;
+  overlay.querySelectorAll('.yco-chip').forEach(c => c.remove());
 }
 
 // ── 댓글 로드 및 스케줄링 ────────────────────────────────────────────────────
@@ -130,6 +148,7 @@ async function loadAndSchedule(videoId) {
     return;
   }
 
+  lastComments = result.comments;
   if (result.demo) showDemoBadge();
   scheduleChips(result.comments);
 }
