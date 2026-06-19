@@ -2,7 +2,7 @@
 
 const FADE_DURATION   = 5000;  // 페이드 모드 노출 시간 (ms)
 const FADE_INTERVAL   = 8000;  // 페이드 모드 댓글 간격 (ms) — DURATION + 3초 여백
-const SCROLL_SPEED_PX = 96;    // 스크롤 속도 (px/s) — 고정 속도로 겹침 방지
+const SCROLL_SPEED_PX = 86;    // 스크롤 속도 (px/s) — 고정 속도로 겹침 방지
 const SCROLL_INTERVAL = 4000;  // 스크롤 모드 댓글 간격 (ms)
 const SCROLL_LANES    = 10;    // 스크롤 모드 레인 수
 const LANE_STEP       = 8;     // 레인 간격 (% 단위)
