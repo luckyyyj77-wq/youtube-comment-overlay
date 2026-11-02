@@ -24,7 +24,7 @@
 <body>
 
   <h1>Privacy Policy</h1>
-  <p class="meta">YouTube Comment Overlay Chrome Extension &nbsp;·&nbsp; Last updated: 2026-06-18</p>
+  <p class="meta">YouTube Comment Overlay Chrome Extension &nbsp;·&nbsp; Last updated: 2026-11-02</p>
 
   <h2>1. Overview</h2>
   <p>
@@ -32,64 +32,87 @@
     on the video player. This policy explains what data the Extension accesses and how it is handled.
   </p>
 
-  <h2>2. Data We Do NOT Collect</h2>
+  <h2>2. Data Sent to Our Server</h2>
+  <p>
+    To fetch comments, the Extension sends the ID of the YouTube video you open to our backend server
+    (<code>youtube-comment-overlay-server-production.up.railway.app</code>), unless the comments for
+    that video are already saved in your browser. Like any web request, this request also exposes your
+    IP address to the server.
+  </p>
+  <ul>
+    <li><strong>Video IDs</strong> are used to look up comments. Our server does not link them to you
+      or keep a record of which videos you watched.</li>
+    <li><strong>IP addresses</strong> are held in memory for about one minute to limit excessive requests.
+      Our server does not write them to a log or database.</li>
+    <li>Our server runs on <a href="https://railway.com" target="_blank">Railway</a>, which may process
+      technical request data, such as IP addresses, to operate its hosting service.</li>
+  </ul>
+
+  <h2>3. Data We Do NOT Collect</h2>
   <p>The Extension does <strong>not</strong>:</p>
   <ul>
-    <li>Collect, store, or transmit any personally identifiable information.</li>
-    <li>Track browsing history or viewing habits.</li>
-    <li>Send any data to our servers — we operate no backend servers.</li>
+    <li>Ask for or collect your name, email address, or Google or YouTube account information.</li>
+    <li>Build a history or profile of the videos you watch.</li>
+    <li>Sell your data or share it for advertising.</li>
     <li>Use cookies or any form of cross-site tracking.</li>
   </ul>
 
-  <h2>3. YouTube Data API</h2>
+  <h2>4. YouTube API Services</h2>
   <p>
-    The Extension uses the
-    <a href="https://developers.google.com/youtube/v3" target="_blank">YouTube Data API v3</a>
-    to fetch public comment data for the currently playing video.
-    This API is provided by Google LLC and is subject to
-    <a href="https://policies.google.com/privacy" target="_blank">Google's Privacy Policy</a>.
-  </p>
-  <p>
-    API requests are made directly from your browser to Google's servers
-    (<code>https://www.googleapis.com/youtube/v3/</code>).
-    No comment data is stored beyond your current browser session.
+    The Extension uses
+    <a href="https://developers.google.com/youtube/v3" target="_blank">YouTube API Services</a>
+    to obtain public comment data for the video you open. Our server, not your browser, makes these
+    requests to Google, using a key that belongs to the service. You do not need to provide an API key.
+    By using the Extension, you agree to the
+    <a href="https://www.youtube.com/t/terms" target="_blank">YouTube Terms of Service</a>.
+    Google's handling of data is described in the
+    <a href="https://policies.google.com/privacy" target="_blank">Google Privacy Policy</a>.
   </p>
 
-  <h2>4. API Key</h2>
+  <h2>5. Temporary Storage of Comments</h2>
   <p>
-    The Extension requires a YouTube Data API key provided by the user.
-    This key is stored locally in Chrome's
-    <a href="https://developer.chrome.com/docs/extensions/reference/storage/" target="_blank">
-      <code>chrome.storage.sync</code>
-    </a>
-    and is only used to authenticate requests to the YouTube Data API.
-    It is never transmitted to any third party other than Google.
+    Public comment data, including comment text, commenter display names, and like and reply counts,
+    is cached so that the same video does not need to be requested repeatedly:
   </p>
-
-  <h2>5. Permissions</h2>
   <ul>
-    <li><strong>storage</strong> — saves your settings (API key, display mode, position, opacity, language) locally.</li>
-    <li><strong>activeTab</strong> — injects the comment overlay into the currently active YouTube tab.</li>
-    <li><strong>https://www.youtube.com/*</strong> — required to detect the currently playing video.</li>
-    <li><strong>https://www.googleapis.com/youtube/v3/*</strong> — required to fetch public comment data via the YouTube Data API.</li>
+    <li><strong>On our server:</strong> by video ID, for up to 24 hours. This cache is shared by all users
+      and contains no information about who requested a video.</li>
+    <li><strong>In your browser:</strong> in <code>chrome.storage.local</code>, for about 2 hours.
+      Expired entries are removed as new comments are saved, and all of them are removed
+      when you uninstall the Extension.</li>
   </ul>
 
-  <h2>6. Children's Privacy</h2>
+  <h2>6. Your Settings</h2>
+  <p>
+    Your display mode, position, opacity, language, and on/off preference are saved with
+    <a href="https://developer.chrome.com/docs/extensions/reference/api/storage" target="_blank"><code>chrome.storage.sync</code></a>.
+    If Chrome sync is on, Google syncs these settings across your browsers. They are not sent to our server.
+  </p>
+
+  <h2>7. Permissions</h2>
+  <ul>
+    <li><strong>storage</strong> — saves your settings and temporarily caches comments.</li>
+    <li><strong>activeTab</strong> — lets the Extension act on the active tab when you use it.</li>
+    <li><strong>https://www.youtube.com/*</strong> — required to detect the current video and show the overlay.</li>
+    <li><strong>https://youtube-comment-overlay-server-production.up.railway.app/*</strong> — required to fetch comments from our server.</li>
+  </ul>
+
+  <h2>8. Children's Privacy</h2>
   <p>
     The Extension does not knowingly collect any information from children under the age of 13.
   </p>
 
-  <h2>7. Changes to This Policy</h2>
+  <h2>9. Changes to This Policy</h2>
   <p>
     We may update this Privacy Policy from time to time.
     The "Last updated" date at the top of this page will reflect any changes.
     Continued use of the Extension after changes constitutes acceptance of the updated policy.
   </p>
 
-  <h2>8. Contact</h2>
+  <h2>10. Contact</h2>
   <p>
     If you have any questions about this Privacy Policy, please open an issue on our
-    <a href="https://github.com" target="_blank">GitHub repository</a>.
+    <a href="https://github.com/luckyyyj77-wq/youtube-comment-overlay/issues" target="_blank">GitHub repository</a>.
   </p>
 
   <hr>
