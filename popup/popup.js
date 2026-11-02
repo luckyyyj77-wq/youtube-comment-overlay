@@ -26,7 +26,7 @@ const rangeOpacity = document.getElementById('range-opacity');
 const opacityValue = document.getElementById('opacity-value');
 const btnLang      = document.getElementById('btn-lang');
 
-const DEFAULTS = { enabled: true, mode: 'scroll', position: 'bottom', bgOpacity: 50, lang: 'en' };
+const DEFAULTS = { enabled: true, mode: 'fade', position: 'bottom', bgOpacity: 50, lang: 'en' };
 
 let currentLang = 'en';
 

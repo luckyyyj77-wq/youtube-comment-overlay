@@ -2,21 +2,6 @@
 
 const SERVER_URL = 'https://youtube-comment-overlay-server-production.up.railway.app';
 
-const DEMO_COMMENTS = [
-  { id: 'd1', text: '이 영상 진짜 최고다 ㅋㅋㅋㅋ', likeCount: 18400, replyCount: 312, authorName: '유저A' },
-  { id: 'd2', text: '몇 번을 봐도 질리지가 않네요', likeCount: 9200, replyCount: 87, authorName: '유저B' },
-  { id: 'd3', text: '와 이게 무료라고?', likeCount: 7700, replyCount: 204, authorName: '유저C' },
-  { id: 'd4', text: '제 인생 영상입니다 진심으로', likeCount: 6500, replyCount: 56, authorName: '유저D' },
-  { id: 'd5', text: '처음 봤을 때 충격받았어요', likeCount: 4300, replyCount: 33, authorName: '유저E' },
-  { id: 'd6', text: '알고리즘이 나를 여기 데려왔다', likeCount: 3800, replyCount: 19, authorName: '유저F' },
-  { id: 'd7', text: '10년 후에도 이 영상 찾아볼 것 같음', likeCount: 3200, replyCount: 41, authorName: '유저G' },
-  { id: 'd8', text: 'ㅋㅋㅋㅋㅋ 진짜 웃기다', likeCount: 2900, replyCount: 8, authorName: '유저H' },
-  { id: 'd9', text: '이 부분에서 소름 돋았다', likeCount: 2400, replyCount: 15, authorName: '유저I' },
-  { id: 'd10', text: '구독하고 갑니다', likeCount: 1800, replyCount: 6, authorName: '유저J' },
-  { id: 'd11', text: '댓글 보러 왔어요', likeCount: 1500, replyCount: 22, authorName: '유저K' },
-  { id: 'd12', text: '이 채널 숨겨진 보물이네', likeCount: 1200, replyCount: 11, authorName: '유저L' },
-];
-
 // 시작 시 저장된 enabled 상태로 아이콘 초기화
 chrome.storage.sync.get({ enabled: true }, r => updateIcon(r.enabled));
 
@@ -46,23 +31,57 @@ function updateIcon(enabled) {
   }
 }
 
+const CLIENT_CACHE_TTL = 2 * 60 * 60 * 1000; // 2시간 (ms)
+
+async function getClientCache(videoId) {
+  const key = `cc:${videoId}`;
+  const result = await chrome.storage.local.get(key);
+  const entry = result[key];
+  if (!entry) return null;
+  if (Date.now() - entry.ts > CLIENT_CACHE_TTL) {
+    chrome.storage.local.remove(key);
+    return null;
+  }
+  return entry.comments;
+}
+
+// 다시 보지 않는 영상의 항목이 쌓이지 않도록 저장할 때마다 만료 항목을 지움
+async function pruneClientCache() {
+  const all = await chrome.storage.local.get(null);
+  const now = Date.now();
+  const expired = Object.keys(all).filter(
+    key => key.startsWith('cc:') && now - all[key].ts > CLIENT_CACHE_TTL
+  );
+  if (expired.length > 0) await chrome.storage.local.remove(expired);
+}
+
+async function setClientCache(videoId, comments) {
+  const key = `cc:${videoId}`;
+  try {
+    await pruneClientCache();
+    await chrome.storage.local.set({ [key]: { comments, ts: Date.now() } });
+  } catch {
+    // 캐시 실패(용량 초과 등)로 이미 받은 댓글까지 버리지 않음
+  }
+}
+
 async function handleFetchComments(videoId) {
+  const cached = await getClientCache(videoId);
+  if (cached) return { comments: cached, fromCache: true };
+
   try {
     const res = await fetch(`${SERVER_URL}/api/comments?videoId=${videoId}`, {
       signal: AbortSignal.timeout(10000),
     });
     const data = await res.json();
 
-    if (!res.ok) {
-      if (data.demo) return { comments: tagComments(DEMO_COMMENTS), demo: true };
-      throw new Error(data.error ?? `HTTP ${res.status}`);
-    }
+    if (!res.ok) return { unavailable: true };
 
-    // 서버가 tagComments 없이 보내므로 클라이언트에서 태깅
-    return { comments: tagComments(data.comments), fromCache: data.fromCache };
+    const comments = tagComments(data.comments);
+    await setClientCache(videoId, comments);
+    return { comments, fromCache: data.fromCache };
   } catch {
-    // 서버 연결 실패 시 데모 모드로 폴백
-    return { comments: tagComments(DEMO_COMMENTS), demo: true };
+    return { unavailable: true };
   }
 }
 

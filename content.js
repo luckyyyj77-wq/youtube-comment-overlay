@@ -20,7 +20,7 @@ let lastComments   = null;
 // ── 초기화 ──────────────────────────────────────────────────────────────────
 
 chrome.storage.sync.get(
-  { enabled: true, mode: 'scroll', position: 'bottom', bgOpacity: 50 },
+  { enabled: true, mode: 'fade', position: 'bottom', bgOpacity: 50 },
   result => {
     enabled   = result.enabled;
     mode      = result.mode;
@@ -137,13 +137,15 @@ async function loadAndSchedule(videoId) {
 
   if (videoId !== currentVideoId) return;
 
-  if (result.error || !result.comments?.length) {
+  // 서버 장애는 영상 탓이 아니므로 안내 없이 아무것도 표시하지 않음
+  if (result.error || result.unavailable) return;
+
+  if (!result.comments?.length) {
     showNoCommentsBadge();
     return;
   }
 
   lastComments = result.comments;
-  if (result.demo) showDemoBadge();
   scheduleChips(result.comments);
 }
 
@@ -154,14 +156,6 @@ function showNoCommentsBadge() {
   badge.textContent = 'Comments are disabled for this video';
   overlay.appendChild(badge);
   setTimeout(() => badge.remove(), 4000);
-}
-
-function showDemoBadge() {
-  if (!overlay || overlay.querySelector('.yco-demo-badge')) return;
-  const badge = document.createElement('div');
-  badge.className = 'yco-demo-badge';
-  badge.textContent = 'Demo Mode';
-  overlay.appendChild(badge);
 }
 
 function scheduleChips(comments) {
